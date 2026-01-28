@@ -41,3 +41,20 @@ Objectif : calculer la température moyenne et le nombre d’alertes de vent for
 - Spark master : `spark://spark-master:7077` (pas de `local[*]`)
 - Kafka (depuis conteneurs) : `kafka:29092`
 - Sortie : affichage console via `show()` (exemple du PDF)
+## Step 3 — Traitement Spark (agrégation)
+
+Objectif : lancer un job Spark qui lit les messages du topic Kafka `weather_transformed` et calcule une agrégation par fenêtre de 1 minute.
+
+### Démarrage du cluster Spark
+- Ajout de `spark-master` et `spark-worker` dans `docker-compose.yml`
+- Spark UI :
+  - Master : http://localhost:8080
+  - Worker : http://localhost:8081
+
+### Exécution du job Spark
+Le script Spark est placé dans `notebooks/weather_spark.py` (monté dans le conteneur Spark via un volume).
+
+Commande utilisée (avec le connecteur Kafka) :
+
+```bash
+docker exec -it spark-master /spark/bin/spark-submit --master spark://spark-master:7077 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1 /workspace/weather_spark.py
