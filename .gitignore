@@ -6,6 +6,7 @@ __pycache__/
 .vscode/
 notebooks/.ipynb_checkpoints/
 notebooks/*.ipynb
-# dossiers parasites (créés par erreur)
-src/src/
-notebooks/src/
+__pycache__/
+*.pyc
+airflow/logs/
+
