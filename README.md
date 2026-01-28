@@ -12,4 +12,14 @@ Messages received by consumer:
 Inside Jupyter, install Python dependencies:
 ```bash
 pip install kafka-python requests
+## Step 2.3.2 - Weather producer (Open-Meteo -> Kafka)
+Kafka topic: `weather_transformed`
+
+Kafka listeners:
+- From containers (Jupyter, etc.): `kafka:29092`
+- From host (Windows): `localhost:9092`
+
+Install Python deps in the Jupyter container:
+```bash
+docker exec -it jupyter pip install --no-cache-dir kafka-python requests
 
