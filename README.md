@@ -1,60 +1,70 @@
-# Résumé des étapes réalisées (Kafka + météo)
+# PROJETDOCKER — Pipeline de données météo avec Kafka, Spark, HDFS et Airflow
 
-## Step 2.1 — Mise en place de Kafka (mode KRaft) + création d’un topic
-- Ajout de Kafka dans `docker-compose.yml` (mode **KRaft**, donc sans ZooKeeper).
-- Démarrage de la stack avec Docker Compose.
-- Création et vérification d’un premier topic Kafka nommé `weather`.
+## Objectif du projet
 
----
+L’objectif de ce projet est de mettre en place un pipeline de données complet, conteneurisé avec Docker, permettant :
 
-## Step 2.2 — Vérification du fonctionnement Kafka (Producer / Consumer)
-- Test du pipeline Kafka avec les outils en ligne de commande :
-  - lancement d’un **consumer** sur le topic `weather`,
-  - lancement d’un **producer** et envoi de messages,
-  - vérification que les messages sont bien consommés.
-- Objectif : valider que Kafka fonctionne correctement avant d’ajouter du code Python.
+- d’ingérer des données météo,
+- de les traiter avec Apache Spark,
+- de stocker les résultats dans HDFS,
+- et d’orchestrer l’exécution avec Apache Airflow.
 
 ---
 
-## Step 2.3.1 — Préparation de l’environnement Python (dans Jupyter)
-- Installation des dépendances nécessaires dans le conteneur Jupyter :
-  - `kafka-python` pour produire dans Kafka,
-  - `requests` pour appeler une API HTTP.
-- Objectif : permettre l’exécution d’un producer Python dans l’environnement Jupyter.
+## Étape 1 — Mise en place de l’environnement Docker
+
+Une architecture Docker Compose a été créée afin de déployer les services suivants :
+
+- Apache Kafka pour l’ingestion des données,
+- Apache Spark (mode standalone) pour le traitement distribué,
+- Hadoop HDFS (NameNode et DataNode) pour le stockage,
+- Apache Airflow avec PostgreSQL pour l’orchestration,
+- Jupyter Notebook pour les tests et le développement.
+
+Tous les services communiquent via un réseau Docker commun.
 
 ---
 
-## Step 2.3.2 — Producer météo (Open-Meteo → Kafka) + transformation des données
-- Création d’un second topic Kafka : `weather_transformed`.
-- Écriture d’un script Python (`weather_producer.py`) qui :
-  - récupère des données météo via l’API **Open-Meteo**,
-  - transforme les données (ex. conversion température + ajout d’un indicateur d’alerte vent),
-  - envoie les messages transformés dans Kafka (`weather_transformed`).
-- Ajustement de la configuration Kafka avec **deux listeners** :
-  - un pour la machine hôte (Windows),
-  - un pour les conteneurs Docker (communication interne entre services).
-- Vérification avec un consumer Kafka que les messages arrivent bien sur `weather_transformed`.
-## Step 3 - Spark : agrégation sur fenêtre 1 minute
-Objectif : calculer la température moyenne et le nombre d’alertes de vent fort sur une fenêtre temporelle d’1 minute à partir du topic Kafka `weather_transformed`.
+## Étape 2 — Ingestion des données météo
 
-- Script : `src/weather_spark.py`
-- Spark master : `spark://spark-master:7077` (pas de `local[*]`)
-- Kafka (depuis conteneurs) : `kafka:29092`
-- Sortie : affichage console via `show()` (exemple du PDF)
-## Step 3 — Traitement Spark (agrégation)
+Un producteur Kafka a été développé afin d’envoyer des données météo simulées au format JSON dans un topic Kafka dédié.
 
-Objectif : lancer un job Spark qui lit les messages du topic Kafka `weather_transformed` et calcule une agrégation par fenêtre de 1 minute.
+Chaque message contient notamment :
+- un timestamp,
+- une température,
+- un indicateur d’alerte éventuel.
 
-### Démarrage du cluster Spark
-- Ajout de `spark-master` et `spark-worker` dans `docker-compose.yml`
-- Spark UI :
-  - Master : http://localhost:8080
-  - Worker : http://localhost:8081
+---
 
-### Exécution du job Spark
-Le script Spark est placé dans `notebooks/weather_spark.py` (monté dans le conteneur Spark via un volume).
+## Étape 3 — Traitement des données avec Spark
 
-Commande utilisée (avec le connecteur Kafka) :
+Un script Spark a été implémenté pour :
 
-```bash
-docker exec -it spark-master /spark/bin/spark-submit --master spark://spark-master:7077 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1 /workspace/weather_spark.py
+- lire les messages depuis le topic Kafka,
+- parser les données JSON,
+- appliquer une agrégation par fenêtres temporelles (window),
+- calculer :
+  - la température moyenne,
+  - le nombre d’alertes par fenêtre.
+
+
+
+---
+
+## Étape 4 — Stockage des résultats dans HDFS
+
+Les résultats agrégés par Spark sont écrits dans HDFS :
+
+- au format CSV,
+- dans un répertoire dédié,
+- avec génération automatique des fichiers `part-*.csv`.
+
+## Étape 5 — Orchestration avec Apache Airflow
+
+Un DAG Airflow nommé `weather_pipeline` a été créé afin de :
+
+- déclencher automatiquement le job Spark,
+- superviser son exécution,
+- gérer les erreurs et les états des tâches.
+
+
